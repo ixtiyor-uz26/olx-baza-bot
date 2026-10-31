@@ -1,0 +1,44 @@
+name: OLX -> baza
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # har 15 daqiqada (GitHub ba'zan 5-10 daqiqa kechiktiradi)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Sinov (bazaga hech narsa qo'shmaydi): 1 yoki bo'sh"
+        required: false
+        default: ""
+
+concurrency:
+  group: olx-baza
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Botni ishga tushirish
+        env:
+          JOY_LOGIN: ${{ secrets.JOY_LOGIN }}
+          JOY_PASSWORD: ${{ secrets.JOY_PASSWORD }}
+          OLX_REFRESH_TOKEN: ${{ secrets.OLX_REFRESH_TOKEN }}
+          MAX_PHONES_PER_RUN: "2"
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: python bot.py
+      - name: Holatni saqlash
+        if: always()
+        run: |
+          git config user.name "olx-baza-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add state/state.json || true
+          git diff --cached --quiet || git commit -m "state yangilandi" && git push || true
