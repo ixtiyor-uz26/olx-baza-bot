@@ -1,8 +1,8 @@
 name: OLX -> baza
 
 on:
-  schedule:
-    - cron: "*/15 * * * *"   # har 15 daqiqada (GitHub ba'zan 5-10 daqiqa kechiktiradi)
+  # schedule:   # o'chirilgan: OLX GitHub serverlarini bloklaydi (403)
+  #   - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
       dry_run:
