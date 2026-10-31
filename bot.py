@@ -23,6 +23,14 @@ from pathlib import Path
 import requests
 
 # ---------------- Sozlamalar ----------------
+# Telefonda: login/parol/token "sozlama.env" faylida saqlanadi (GitHub'ga yuklanmaydi)
+_env = Path(__file__).parent / "sozlama.env"
+if _env.exists():
+    for _line in _env.read_text(encoding="utf-8").splitlines():
+        if "=" in _line and not _line.strip().startswith("#"):
+            _k, _v = _line.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip())
+
 JOY_API = "https://api.v2.joyestate.uz"
 JOY_LOGIN = os.environ.get("JOY_LOGIN", "")
 JOY_PASSWORD = os.environ.get("JOY_PASSWORD", "")
