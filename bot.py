@@ -38,7 +38,7 @@ PRICE_FROM, PRICE_TO = 450, 3000
 MAX_PHONES_PER_RUN = int(os.environ.get("MAX_PHONES_PER_RUN", "2"))
 NEW_WINDOW_HOURS = 48        # faqat shuncha soat ichida qo'yilgan e'lonlar
 COOLDOWN_HOURS = 3           # OLX "shubhali faollik" desa, shuncha soat dam oladi
-DRY_RUN = os.environ.get("DRY_RUN", "") == "1"
+DRY_RUN = os.environ.get("DRY_RUN", "") == "1" or (Path(__file__).parent / "DRY_RUN").exists()  # DRY_RUN fayli bo'lsa — sinov rejimi
 
 TG_CONFIGS = {  # bazadagi Telegram sozlamalari (ijara, uy)
     "Mijozlar uchun (uy)": "6ad522ed015234de48235120",
@@ -70,8 +70,20 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/130.0 Safari/537.36")
 
 
+LOG_LINES = []
+
+
 def log(*a):
-    print(datetime.now().strftime("%H:%M:%S"), *a, flush=True)
+    line = datetime.now(timezone(timedelta(hours=5))).strftime("%m-%d %H:%M:%S") + " " + " ".join(str(x) for x in a)
+    line = re.sub(r"\+?998\d{9}", "+998*******", line)  # raqamlarni yashirish (repo ochiq)
+    print(line, flush=True)
+    LOG_LINES.append(line)
+
+
+def write_log():
+    p = Path(__file__).parent / "state" / "last_run.log"
+    old = p.read_text(encoding="utf-8").splitlines() if p.exists() else []
+    p.write_text("\n".join((old + LOG_LINES + ["-" * 40])[-400:]) + "\n", encoding="utf-8")
 
 
 # ---------------- Holat (state) ----------------
@@ -392,7 +404,7 @@ def process_queue(st, now):
             log("  rasmlar yuklanmadi — o'tkazib yuborildi")
             continue
         if DRY_RUN:
-            log(f"  [DRY_RUN] qo'shilardi: {m['rooms']} xona, {m['price']} {m['currency']}, {m['region']}, {phone}")
+            log(f"  [DRY_RUN] qo'shilardi: {m['rooms']} xona, {m['price']} {m['currency']}, {m['region']}")
             continue
         if not landlord_id:
             landlord_id = joy.create_landlord(f"{m['owner_name']} (OLX)", phone)["_id"]
@@ -409,4 +421,10 @@ if __name__ == "__main__":
     if missing:
         print("Yetishmayapti (GitHub Secrets):", ", ".join(missing))
         sys.exit(1)
-    main()
+    try:
+        main()
+    except Exception as e:
+        log("XATO:", repr(e)[:500])
+        raise
+    finally:
+        write_log()
